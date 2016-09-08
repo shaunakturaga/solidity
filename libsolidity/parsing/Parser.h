@@ -60,7 +60,8 @@ private:
 		ASTPointer<ParameterList> parameters;
 		ASTPointer<ParameterList> returnParameters;
 		Declaration::Visibility visibility = Declaration::Visibility::Default;
-		bool isDeclaredConst = false;
+		bool isView = false;
+		bool isPure = false;
 		bool isPayable = false;
 		std::vector<ASTPointer<ModifierInvocation>> modifiers;
 	};

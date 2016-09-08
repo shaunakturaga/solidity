@@ -321,12 +321,21 @@ Parser::FunctionHeaderParserResult Parser::parseFunctionHeader(bool _forceEmptyN
 	while (true)
 	{
 		Token::Value token = m_scanner->currentToken();
-		if (token == Token::Const)
+		// FIXME: constant should be removed at the next breaking release
+		if (token == Token::View || token == Token::Const)
 		{
-			if (result.isDeclaredConst)
-				parserError(string("Multiple \"constant\" specifiers."));
+			if (result.isView)
+				parserError(string("Multiple \"view\" or \"constant\" specifiers."));
 
-			result.isDeclaredConst = true;
+			result.isView = true;
+			m_scanner->next();
+		}
+		else if (token == Token::Pure)
+		{
+			if (result.isPure)
+				parserError(string("Multiple \"pure\" specifiers."));
+
+			result.isPure = true;
 			m_scanner->next();
 		}
 		else if (m_scanner->currentToken() == Token::Payable)
@@ -407,9 +416,10 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinitionOrFunctionTypeStateVariable(A
 			c_isConstructor,
 			docstring,
 			header.parameters,
-			header.isDeclaredConst,
 			header.modifiers,
 			header.returnParameters,
+			header.isView,
+			header.isPure,
 			header.isPayable,
 			block
 		);
@@ -421,7 +431,8 @@ ASTPointer<ASTNode> Parser::parseFunctionDefinitionOrFunctionTypeStateVariable(A
 			header.parameters,
 			header.returnParameters,
 			header.visibility,
-			header.isDeclaredConst,
+			header.isView,
+			header.isPure,
 			header.isPayable
 		);
 		type = parseTypeNameSuffix(type, nodeFactory);
@@ -743,7 +754,8 @@ ASTPointer<FunctionTypeName> Parser::parseFunctionType()
 		header.parameters,
 		header.returnParameters,
 		header.visibility,
-		header.isDeclaredConst,
+		header.isView,
+		header.isPure,
 		header.isPayable
 	);
 }

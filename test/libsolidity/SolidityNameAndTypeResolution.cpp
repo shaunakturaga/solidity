@@ -1201,7 +1201,7 @@ BOOST_AUTO_TEST_CASE(state_variable_accessors)
 	BOOST_REQUIRE(function && function->hasDeclaration());
 	auto returnParams = function->returnParameterTypes();
 	BOOST_CHECK_EQUAL(returnParams.at(0)->canonicalName(false), "uint256");
-	BOOST_CHECK(function->isConstant());
+	BOOST_CHECK(function->isView());
 
 	function = retrieveFunctionBySignature(*contract, "map(uint256)");
 	BOOST_REQUIRE(function && function->hasDeclaration());
@@ -1209,7 +1209,7 @@ BOOST_AUTO_TEST_CASE(state_variable_accessors)
 	BOOST_CHECK_EQUAL(params.at(0)->canonicalName(false), "uint256");
 	returnParams = function->returnParameterTypes();
 	BOOST_CHECK_EQUAL(returnParams.at(0)->canonicalName(false), "bytes4");
-	BOOST_CHECK(function->isConstant());
+	BOOST_CHECK(function->isView());
 
 	function = retrieveFunctionBySignature(*contract, "multiple_map(uint256,uint256)");
 	BOOST_REQUIRE(function && function->hasDeclaration());
@@ -1218,7 +1218,7 @@ BOOST_AUTO_TEST_CASE(state_variable_accessors)
 	BOOST_CHECK_EQUAL(params.at(1)->canonicalName(false), "uint256");
 	returnParams = function->returnParameterTypes();
 	BOOST_CHECK_EQUAL(returnParams.at(0)->canonicalName(false), "bytes4");
-	BOOST_CHECK(function->isConstant());
+	BOOST_CHECK(function->isView());
 }
 
 BOOST_AUTO_TEST_CASE(function_clash_with_state_variable_accessor)

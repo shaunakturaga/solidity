@@ -569,9 +569,10 @@ public:
 		bool _isConstructor,
 		ASTPointer<ASTString> const& _documentation,
 		ASTPointer<ParameterList> const& _parameters,
-		bool _isDeclaredConst,
 		std::vector<ASTPointer<ModifierInvocation>> const& _modifiers,
 		ASTPointer<ParameterList> const& _returnParameters,
+		bool _isView,
+		bool _isPure,
 		bool _isPayable,
 		ASTPointer<Block> const& _body
 	):
@@ -579,7 +580,8 @@ public:
 		Documented(_documentation),
 		ImplementationOptional(_body != nullptr),
 		m_isConstructor(_isConstructor),
-		m_isDeclaredConst(_isDeclaredConst),
+		m_isView(_isView),
+		m_isPure(_isPure),
 		m_isPayable(_isPayable),
 		m_functionModifiers(_modifiers),
 		m_body(_body)
@@ -589,7 +591,8 @@ public:
 	virtual void accept(ASTConstVisitor& _visitor) const override;
 
 	bool isConstructor() const { return m_isConstructor; }
-	bool isDeclaredConst() const { return m_isDeclaredConst; }
+	bool isView() const { return m_isView; }
+	bool isPure() const { return m_isPure; }
 	bool isPayable() const { return m_isPayable; }
 	std::vector<ASTPointer<ModifierInvocation>> const& modifiers() const { return m_functionModifiers; }
 	std::vector<ASTPointer<VariableDeclaration>> const& returnParameters() const { return m_returnParameters->parameters(); }
@@ -615,7 +618,8 @@ public:
 
 private:
 	bool m_isConstructor;
-	bool m_isDeclaredConst;
+	bool m_isView;
+	bool m_isPure;
 	bool m_isPayable;
 	std::vector<ASTPointer<ModifierInvocation>> m_functionModifiers;
 	ASTPointer<Block> m_body;
@@ -876,11 +880,12 @@ public:
 		ASTPointer<ParameterList> const& _parameterTypes,
 		ASTPointer<ParameterList> const& _returnTypes,
 		Declaration::Visibility _visibility,
-		bool _isDeclaredConst,
+		bool _isView,
+		bool _isPure,
 		bool _isPayable
 	):
 		TypeName(_location), m_parameterTypes(_parameterTypes), m_returnTypes(_returnTypes),
-		m_visibility(_visibility), m_isDeclaredConst(_isDeclaredConst), m_isPayable(_isPayable)
+		m_visibility(_visibility), m_isView(_isView), m_isPure(_isPure), m_isPayable(_isPayable)
 	{}
 	virtual void accept(ASTVisitor& _visitor) override;
 	virtual void accept(ASTConstVisitor& _visitor) const override;
@@ -894,14 +899,16 @@ public:
 	{
 		return m_visibility == Declaration::Visibility::Default ? Declaration::Visibility::Internal : m_visibility;
 	}
-	bool isDeclaredConst() const { return m_isDeclaredConst; }
+	bool isView() const { return m_isView; }
+	bool isPure() const { return m_isPure; }
 	bool isPayable() const { return m_isPayable; }
 
 private:
 	ASTPointer<ParameterList> m_parameterTypes;
 	ASTPointer<ParameterList> m_returnTypes;
 	Declaration::Visibility m_visibility;
-	bool m_isDeclaredConst;
+	bool m_isView;
+	bool m_isPure;
 	bool m_isPayable;
 };
 
