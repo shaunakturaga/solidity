@@ -1756,7 +1756,7 @@ TypePointer StructType::interfaceType(bool _inLibrary) const
 	if (_inLibrary && location() == DataLocation::Storage)
 		return shared_from_this();
 	else
-		return TypePointer();
+		return copyForLocation(DataLocation::Memory, true);
 }
 
 TypePointer StructType::copyForLocation(DataLocation _location, bool _isPointer) const
