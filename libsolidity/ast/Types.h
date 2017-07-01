@@ -868,6 +868,15 @@ public:
 		Require ///< require()
 	};
 
+	/// How the function will modify the EVM state.
+	enum class StateMutability
+	{
+		Pure,
+		View,
+		NonPayable,
+		Payable
+	};
+
 	virtual Category category() const override { return Category::Function; }
 
 	/// Creates the type of a function.
@@ -930,11 +939,19 @@ public:
 		m_gasSet(_gasSet),
 		m_valueSet(_valueSet),
 		m_bound(_bound),
-		m_isView(_isView),
-		m_isPure(_isPure),
-		m_isPayable(_isPayable),
 		m_declaration(_declaration)
 	{
+		solAssert(!(_isView && _isPure), "");
+		solAssert(!(_isView && _isPayable), "");
+		solAssert(!(_isPure && _isPayable), "");
+		if (_isPayable)
+			m_stateMutability = StateMutability::Payable;
+		else if (_isView)
+			m_stateMutability = StateMutability::View;
+		else if (_isPure)
+			m_stateMutability = StateMutability::Pure;
+		else
+			m_stateMutability = StateMutability::NonPayable;
 		solAssert(
 			!m_bound || !m_parameterTypes.empty(),
 			"Attempted construction of bound function without self type"
@@ -984,6 +1001,7 @@ public:
 	/// @returns true if the ABI is used for this call (only meaningful for external calls)
 	bool isBareCall() const;
 	Kind const& kind() const { return m_kind; }
+	StateMutability const& stateMutability() const { return m_stateMutability; }
 	/// @returns the external signature of this function type given the function name
 	std::string externalSignature() const;
 	/// @returns the external identifier of this function (the hash of the signature).
@@ -994,11 +1012,11 @@ public:
 		return *m_declaration;
 	}
 	bool hasDeclaration() const { return !!m_declaration; }
-	bool isView() const { return m_isView; }
+	bool isView() const { return m_stateMutability == StateMutability::View; }
 	/// @returns true if the the result of this function only depends on its arguments
 	/// and it does not modify the state.
 	bool isPure() const;
-	bool isPayable() const { return m_isPayable; }
+	bool isPayable() const { return m_stateMutability == StateMutability::Payable; }
 	/// @return A shared pointer of an ASTString.
 	/// Can contain a nullptr in which case indicates absence of documentation
 	ASTPointer<ASTString> documentation() const;
@@ -1031,14 +1049,12 @@ private:
 	std::vector<std::string> m_parameterNames;
 	std::vector<std::string> m_returnParameterNames;
 	Kind const m_kind;
+	StateMutability m_stateMutability = StateMutability::NonPayable;
 	/// true if the function takes an arbitrary number of arguments of arbitrary types
 	bool const m_arbitraryParameters = false;
 	bool const m_gasSet = false; ///< true iff the gas value to be used is on the stack
 	bool const m_valueSet = false; ///< true iff the value to be sent is on the stack
 	bool const m_bound = false; ///< true iff the function is called as arg1.fun(arg2, ..., argn)
-	bool m_isView = false;
-	bool m_isPure = false;
-	bool m_isPayable = false;
 	Declaration const* m_declaration = nullptr;
 };
 

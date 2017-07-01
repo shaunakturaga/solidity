@@ -2102,11 +2102,7 @@ FunctionType::FunctionType(FunctionTypeName const& _typeName):
 	m_isPayable(_typeName.isPayable())
 {
 	if (_typeName.isPayable())
-	{
 		solAssert(m_kind == Kind::External, "Internal payable function type used.");
-		solAssert(!m_isView, "Payable view function");
-		solAssert(!m_isPure, "Payable pure function");
-	}
 	for (auto const& t: _typeName.parameterTypes())
 	{
 		solAssert(t->annotation().type, "Type not set for parameter.");
@@ -2560,7 +2556,7 @@ u256 FunctionType::externalIdentifier() const
 bool FunctionType::isPure() const
 {
 	return
-		m_isPure ||
+		m_stateMutability == StateMutability::Pure ||
 		m_kind == Kind::SHA3 ||
 		m_kind == Kind::ECRecover ||
 		m_kind == Kind::SHA256 ||
