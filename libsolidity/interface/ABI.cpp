@@ -26,6 +26,22 @@ using namespace std;
 using namespace dev;
 using namespace dev::solidity;
 
+namespace {
+
+string convertStateMutability(FunctionType::StateMutability _stateMutability)
+{
+	switch(_stateMutability)
+	{
+	case StateMutability::Payable: return "payable";
+	case StateMutability::NonPayable: return "nonpayable";
+	case StateMutability::View: return "view";
+	case StateMutability::Pure: return "pure";
+	default: solAssert(false, ""); break;
+	}
+}
+
+}
+
 Json::Value ABI::generate(ContractDefinition const& _contractDef)
 {
 	Json::Value abi(Json::arrayValue);
@@ -36,11 +52,10 @@ Json::Value ABI::generate(ContractDefinition const& _contractDef)
 		Json::Value method;
 		method["type"] = "function";
 		method["name"] = it.second->declaration().name();
-		// FIXME: constant should be removed at the next breaking release
+		// NOTE: constant and payable are for backwards compatibility
 		method["constant"] = it.second->isView();
-		method["view"] = it.second->isView();
-		method["pure"] = it.second->isPure();
 		method["payable"] = it.second->isPayable();
+		method["statemutability"] = convertStateMutability(it.second->stateMutability());
 		method["inputs"] = formatTypeList(
 			externalFunctionType->parameterNames(),
 			externalFunctionType->parameterTypes(),
@@ -60,6 +75,7 @@ Json::Value ABI::generate(ContractDefinition const& _contractDef)
 		auto externalFunction = FunctionType(*_contractDef.constructor(), false).interfaceFunctionType();
 		solAssert(!!externalFunction, "");
 		method["payable"] = externalFunction->isPayable();
+		method["statemutability"] = convertStateMutability(it.second->stateMutability());
 		method["inputs"] = formatTypeList(
 			externalFunction->parameterNames(),
 			externalFunction->parameterTypes(),
@@ -74,6 +90,7 @@ Json::Value ABI::generate(ContractDefinition const& _contractDef)
 		Json::Value method;
 		method["type"] = "fallback";
 		method["payable"] = externalFunctionType->isPayable();
+		method["statemutability"] = convertStateMutability(it.second->stateMutability());
 		abi.append(method);
 	}
 	for (auto const& it: _contractDef.interfaceEvents())
