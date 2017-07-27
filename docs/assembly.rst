@@ -106,11 +106,16 @@ you really know what you are doing.
                // Skip over the length field.
                _data := add(_data, 0x20)
 
-               // Set up a bound.
-               let end := add(_data, len)
-
                // Iterate until the bound is not met.
-               for {} lt(_data, end) {} {
+               for
+               {
+                   let end := add(_data, len)
+               }
+               lt(_data, end)
+               {
+                   _data := add(_data, 0x20)
+               }
+               {
                    o_sum := add(o_sum, mload(_data))
                    _data := add(_data, 0x20)
                }
