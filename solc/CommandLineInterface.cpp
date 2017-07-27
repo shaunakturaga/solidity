@@ -850,7 +850,8 @@ void CommandLineInterface::handleCombinedJSON()
 		output[g_strContracts] = Json::Value(Json::objectValue);
 	for (string const& contractName: contracts)
 	{
-		Json::Value contractData(Json::objectValue);
+		Json::Value& contractData = output[g_strContracts][contractName];
+		contractData = Json::objectValue;
 		if (requests.count(g_strAbi))
 			contractData[g_strAbi] = dev::jsonCompactPrint(m_compiler->contractABI(contractName));
 		if (requests.count("metadata"))
@@ -884,7 +885,6 @@ void CommandLineInterface::handleCombinedJSON()
 			contractData[g_strNatspecDev] = dev::jsonCompactPrint(m_compiler->natspec(contractName, DocumentationType::NatspecDev));
 		if (requests.count(g_strNatspecUser))
 			contractData[g_strNatspecUser] = dev::jsonCompactPrint(m_compiler->natspec(contractName, DocumentationType::NatspecUser));
-		output[g_strContracts][contractName] = contractData;
 	}
 
 	bool needsSourceList = requests.count(g_strAst) || requests.count(g_strSrcMap) || requests.count(g_strSrcMapRuntime);
