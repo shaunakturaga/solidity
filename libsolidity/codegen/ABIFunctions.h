@@ -69,13 +69,23 @@ private:
 	/// (i.e. "clean"). Asserts on failure.
 	std::string conversionFunction(Type const& _from, Type const& _to);
 
-	// @returns the name of the ABI encoding function with the given types
+	// @returns the name of the ABI encoding function with the given type
 	// and queues the generation of the function to the requested functions.
 	std::string abiEncodingFunction(
 		Type const& _givenType,
 		Type const& _targetType,
 		bool _encodeAsLibraryTypes
 	);
+
+	// @returns the name of the ABI encoding function with the given type
+	// and queues the generation of the function to the requested functions.
+	// Case for _givenType being a string literal
+	std::string abiEncodingFunctionStringLiteral(
+		Type const& _givenType,
+		Type const& _targetType,
+		bool _encodeAsLibraryTypes
+	);
+
 
 	std::string shiftLeftFunction(size_t _numBits);
 	std::string shiftRightFunction(size_t _numBits, bool _signed);

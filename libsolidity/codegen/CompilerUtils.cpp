@@ -304,8 +304,10 @@ void CompilerUtils::abiEncode(
 	// stack: <$value0> <$value1> ... <$value(n-1)> <$headStart>
 
 	vector<string> variables;
+	size_t v = 0;
 	for (size_t i = 0; i < _givenTypes.size(); ++i)
-		variables.push_back("$value" + to_string(i));
+		for (size_t j = 0; j < _givenTypes[i]->sizeOnStack(); j++)
+			variables.push_back("$value" + to_string(v++));
 	variables.push_back("$headStart");
 
 	ABIFunctions funs;

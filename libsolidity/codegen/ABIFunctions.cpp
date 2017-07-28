@@ -49,7 +49,7 @@ string ABIFunctions::tupleEncoder(
 		let dynFree := add($headStart, <headSize>)
 		<#values>
 			dynFree := <abiEncode>(
-				$value<i>,
+				<values>
 				$headStart,
 				add($headStart, <headPos>),
 				dynFree
@@ -69,14 +69,19 @@ string ABIFunctions::tupleEncoder(
 	vector<Whiskers::StringMap> values(_givenTypes.size());
 	map<string, pair<TypePointer, TypePointer>> requestedEncodingFunctions;
 	size_t headPos = 0;
+	size_t stackPos = 0;
 	for (size_t i = 0; i < _givenTypes.size(); ++i)
 	{
-		solUnimplementedAssert(_givenTypes[i]->sizeOnStack() == 1, "");
 		solAssert(_givenTypes[i], "");
 		solAssert(_tos[i], "");
 		values[i]["fromTypeID"] = _givenTypes[i]->identifier();
 		values[i]["toTypeID"] = _tos[i]->identifier();
-		values[i]["i"] = to_string(i);
+		size_t sizeOnStack = _givenTypes[i]->sizeOnStack();
+		string valueNames = "";
+		if (sizeOnStack > 0)
+			for (size_t j = 0; j < sizeOnStack; j++)
+				valueNames += "$value" + to_string(stackPos++) + ", ";
+		values[i]["values"] = valueNames;
 		values[i]["headPos"] = to_string(headPos);
 		values[i]["abiEncode"] =
 			abiEncodingFunction(*_givenTypes[i], *_tos[i], _encodeAsLibraryTypes);
@@ -330,6 +335,9 @@ string ABIFunctions::abiEncodingFunction(
 	bool _encodeAsLibraryTypes
 )
 {
+	if (_from.category() == Type::Category::StringLiteral)
+		return abiEncodingFunctionStringLiteral(_from, _to, _encodeAsLibraryTypes);
+
 	string functionName =
 		"abi_encode_" +
 		_from.identifier() +
@@ -347,92 +355,64 @@ string ABIFunctions::abiEncodingFunction(
 		string body;
 		if (_to.isDynamicallySized())
 		{
-			if (_from.category() == Type::Category::StringLiteral)
+			solAssert(_from.category() == Type::Category::Array, "Unknown dynamic type.");
+			auto const& arrayType = dynamic_cast<ArrayType const&>(_from);
+			if (arrayType.location() == DataLocation::Storage)
 			{
-				// TODO this can make use of CODECOPY for large strings once we have that in JULIA
-				auto const& strType = dynamic_cast<StringLiteralType const&>(_from);
-				Whiskers bodyTempl(R"(
-					mstore(headPos, sub(dyn, headStart))
-					mstore(dyn, <length>)
-					<#word>
-						mstore(add(dyn, <offset>), <wordValue>)
-					</word>
-					newDyn := add(dyn, <overallSize>)
-				)");
-				string const& value = strType.value();
-				size_t words = (value.size() + 31) / 32;
-				bodyTempl("overallSize", to_string(32 + words * 32));
-				bodyTempl("length", to_string(value.size()));
-				vector<map<string, string>> wordParams(words);
-				for (size_t i = 0; i < words; ++i)
+				if (arrayType.isByteArray())
 				{
-					wordParams[i]["offset"] = to_string(32 + i * 32);
-					wordParams[i]["wordValue"] = "0x" + h256(value.substr(32 * i, 32), h256::AlignLeft).hex();
-				}
-				bodyTempl("words", wordParams);
-				body = bodyTempl.render();
-			}
-			else
-			{
-				solAssert(_from.category() == Type::Category::Array, "Unknown dynamic type.");
-				auto const& arrayType = dynamic_cast<ArrayType const&>(_from);
-				if (arrayType.location() == DataLocation::Storage)
-				{
-					if (arrayType.isByteArray())
-					{
-						solUnimplemented("");
-					}
 					solUnimplemented("");
 				}
-				else if (arrayType.location() == DataLocation::Memory)
+				solUnimplemented("");
+			}
+			else if (arrayType.location() == DataLocation::Memory)
+			{
+				solUnimplementedAssert(_from == _to, "");
+				if (arrayType.isByteArray())
 				{
-					solUnimplementedAssert(_from == _to, "");
-					if (arrayType.isByteArray())
-					{
-						Whiskers bodyTempl(R"(
-							mstore(headPos, sub(dyn, headStart))
-							let length := <lengthFun>(value)
-							mstore(dyn, length)
-							let destPtr := add(dyn, 32)
-							let srcPtr := add(value, 32)
-							for { let i := 0 } lt(add(i, 32), length) { i := add(i, 32) }
-							{
-								mstore(add(destPtr, i), mload(add(srcPtr, i))
-							}
-							switch iszero(length)
-							case 0 {
-
-							}
-						)");
-						bodyTempl("lengthFun", arrayLengthFunction(arrayType));
-					}
 					Whiskers bodyTempl(R"(
 						mstore(headPos, sub(dyn, headStart))
 						let length := <lengthFun>(value)
 						mstore(dyn, length)
 						let destPtr := add(dyn, 32)
 						let srcPtr := add(value, 32)
-						newDyn := add(destPtr, mul(length, <elementEncodedSize>))
-						for { let i := 0 } lt(i, length) { i := add(i, 1) }
+						for { let i := 0 } lt(add(i, 32), length) { i := add(i, 32) }
 						{
-							newDyn := <encodeToMemoryFun>(mload(srcPtr), destPtr, destPtr, newDyn)
-							srcPtr := add(srcPtr, 32)
-							destPtr := add(destPtr, <elementEncodedSize>)
+							mstore(add(destPtr, i), mload(add(srcPtr, i))
+						}
+						switch iszero(length)
+						case 0 {
+
 						}
 					)");
-					solAssert(arrayType.baseType(), "");
 					bodyTempl("lengthFun", arrayLengthFunction(arrayType));
-					bodyTempl("elementEncodedSize", toCompactHexWithPrefix(arrayType.baseType()->calldataEncodedSize()));
-					bodyTempl("encodeToMemoryFun", abiEncodingFunction(
-						*arrayType.baseType(),
-						*arrayType.baseType(),
-						_encodeAsLibraryTypes
-					));
-					body = bodyTempl.render();
 				}
-				else
-					solUnimplemented("");
+				Whiskers bodyTempl(R"(
+					mstore(headPos, sub(dyn, headStart))
+					let length := <lengthFun>(value)
+					mstore(dyn, length)
+					let destPtr := add(dyn, 32)
+					let srcPtr := add(value, 32)
+					newDyn := add(destPtr, mul(length, <elementEncodedSize>))
+					for { let i := 0 } lt(i, length) { i := add(i, 1) }
+					{
+						newDyn := <encodeToMemoryFun>(mload(srcPtr), destPtr, destPtr, newDyn)
+						srcPtr := add(srcPtr, 32)
+						destPtr := add(destPtr, <elementEncodedSize>)
+					}
+				)");
+				solAssert(arrayType.baseType(), "");
+				bodyTempl("lengthFun", arrayLengthFunction(arrayType));
+				bodyTempl("elementEncodedSize", toCompactHexWithPrefix(arrayType.baseType()->calldataEncodedSize()));
+				bodyTempl("encodeToMemoryFun", abiEncodingFunction(
+					*arrayType.baseType(),
+					*arrayType.baseType(),
+					_encodeAsLibraryTypes
+				));
+				body = bodyTempl.render();
 			}
+			else
+				solUnimplemented("");
 		}
 		else
 		{
@@ -478,6 +458,51 @@ string ABIFunctions::abiEncodingFunction(
 			}
 		}
 		templ("body", body);
+		return templ.render();
+	});
+}
+
+string ABIFunctions::abiEncodingFunctionStringLiteral(
+	Type const& _from,
+	Type const& _to,
+	bool _encodeAsLibraryTypes
+)
+{
+	string functionName =
+		"abi_encode_" +
+		_from.identifier() +
+		"_to_" +
+		_to.identifier() +
+		(_encodeAsLibraryTypes ? "_lib" : "");
+	return createFunction(functionName, [&]() {
+		Whiskers templ(R"(
+			function <functionName>(headStart, headPos, dyn) -> newDyn {
+				mstore(headPos, sub(dyn, headStart))
+				mstore(dyn, <length>)
+				<#word>
+					mstore(add(dyn, <offset>), <wordValue>)
+				</word>
+				newDyn := add(dyn, <overallSize>)
+			}
+		)");
+		templ("functionName", functionName);
+
+		solAssert(_to.isDynamicallySized(), "");
+		solAssert(_from.category() == Type::Category::StringLiteral, "");
+		solAssert(_from.sizeOnStack() == 0, "");
+		// TODO this can make use of CODECOPY for large strings once we have that in JULIA
+		auto const& strType = dynamic_cast<StringLiteralType const&>(_from);
+		string const& value = strType.value();
+		size_t words = (value.size() + 31) / 32;
+		templ("overallSize", to_string(32 + words * 32));
+		templ("length", to_string(value.size()));
+		vector<map<string, string>> wordParams(words);
+		for (size_t i = 0; i < words; ++i)
+		{
+			wordParams[i]["offset"] = to_string(32 + i * 32);
+			wordParams[i]["wordValue"] = "0x" + h256(value.substr(32 * i, 32), h256::AlignLeft).hex();
+		}
+		templ("words", wordParams);
 		return templ.render();
 	});
 }
