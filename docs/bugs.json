@@ -1,14 +1,22 @@
 [
     {
+        "name": "DelegateCallReturnValue",
+        "summary": "The low-level .delegatecall() takes the returned value as a boolean instead of the execution outcome.",
+        "description": "If the destination returns a value or garbage, which if interpreted as a boolean means false, the return value of .delegatecall() is false, despite successful execution.",
+        "introduced": "0.3.0",
+        "fixed": "0.4.15",
+        "severity": "low"
+    },
+    {
         "name": "ECRecoverMalformedInput",
-	"summary": "The ecrecover() builtin can return garbage for malformed input.",
+        "summary": "The ecrecover() builtin can return garbage for malformed input.",
         "description": "The ecrecover precompile does not properly signal failure for malformed input (especially in the 'v' argument) and thus the Solidity function can return data that was previously present in the return area in memory.",
         "fixed": "0.4.14",
         "severity": "medium"
     },
     {
         "name": "SkipEmptyStringLiteral",
-	"summary": "If \"\" is used in a function call, the following function arguments will not be correctly passed to the function.",
+        "summary": "If \"\" is used in a function call, the following function arguments will not be correctly passed to the function.",
         "description": "If the empty string literal \"\" is used as an argument in a function call, it is skipped by the encoder. This has the effect that the encoding of all arguments following this is shifted left by 32 bytes and thus the function call data is corrupted.",
         "fixed": "0.4.12",
         "severity": "low"
