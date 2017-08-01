@@ -3,6 +3,7 @@
 Features:
 
 Bugfixes:
+ * Code Generator: ``.delegatecall()`` should always return execution outcome.
 
 ### 0.4.14 (2017-07-31)
 
